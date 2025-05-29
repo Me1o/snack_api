@@ -11,7 +11,7 @@ import * as cheerio from 'cheerio';
 export class PostsService {
   constructor(private readonly prisma: PrismaService) {}
 
-  @Cron('* * * * *')
+  @Cron('*/10 * * * *')
   parsePosts() {
     // eslint-disable-next-line @typescript-eslint/no-var-requires
     const Parser = require('rss-parser');
