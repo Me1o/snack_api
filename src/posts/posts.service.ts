@@ -7,6 +7,9 @@ import { Post, postCategory } from './entities/posts.entity';
 import { paginate } from 'nestjs-prisma-pagination';
 import fetch from 'node-fetch';
 import * as cheerio from 'cheerio';
+import OpenAI from 'openai';
+import { env } from 'node:process';
+
 @Injectable()
 export class PostsService {
   constructor(private readonly prisma: PrismaService) {}
@@ -22,7 +25,6 @@ export class PostsService {
       if (feed.link == 'https://www.ajnet.me') {
         //aljazeera feed
         posts = await this.parseAljazeeraFeed(feed.items);
-        Logger.log(posts);
         posts.forEach((p) => this.savePostIfNotSaved(p));
       }
     });
@@ -36,7 +38,7 @@ export class PostsService {
       post.title = i.title;
       post.text = i.contentSnippet;
       post.link = i.link;
-      post.category = [postCategory.Politics];
+      post.category = [];
       posts.push(post);
     });
     return posts;
@@ -124,13 +126,96 @@ export class PostsService {
   async deleteYesterdaysNews() {
     const today = new Date();
     const twentyFourHoursAgo = new Date(today.getTime() - 24 * 60 * 60 * 1000);
-    Logger.log(twentyFourHoursAgo);
     await this.prisma.post.deleteMany({
       where: {
         createdAt: {
           lte: twentyFourHoursAgo,
         },
       },
+    });
+  }
+
+  @Cron('* * * * *')
+  async addCategoryToPost() {
+    const post = await this.prisma.post.findFirst({
+      where: {
+        category: {
+          isEmpty: true,
+        },
+      },
+    });
+    if (!post) return;
+    const openai = new OpenAI({
+      apiKey: env.OPENAIKEY,
+    });
+
+    const query =
+      'take this text:' +
+      post.title +
+      ', ' +
+      post.text +
+      '. what is this text about about and under what of the following categories does it fall: Politics, Sports, Culture, Economics, Entertainment, Science, Business, Technology, Legal. also, if applicable what country/ countries does this relate to (using ISO 3166-1 alpha-3 codes). respond as {"country": "SDN, QAT", "category": "Sports, Politics"}';
+    const completion = openai.chat.completions.create({
+      model: 'gpt-4o-mini',
+      store: true,
+      messages: [{ role: 'user', content: query }],
+    });
+
+    completion.then(async (result) => {
+      if (result.choices[0].message.refusal == null) {
+        const verdict = JSON.parse(result.choices[0].message.content);
+        Logger.log(verdict);
+
+        const categories = verdict.category.split(',');
+        const postCategories: postCategory[] = [];
+
+        categories.forEach((cat: string) => {
+          switch (cat.toLowerCase()) {
+            case 'sports':
+              postCategories.push(postCategory.Sports);
+              break;
+            case 'politics':
+              postCategories.push(postCategory.Politics);
+              break;
+            case 'business':
+              postCategories.push(postCategory.Business);
+              break;
+            case 'culture':
+              postCategories.push(postCategory.Culture);
+              break;
+            case 'economics':
+              postCategories.push(postCategory.Economics);
+              break;
+            case 'entertainment':
+              postCategories.push(postCategory.Entertainment);
+              break;
+            case 'legal':
+              postCategories.push(postCategory.Legal);
+              break;
+            case 'science':
+              postCategories.push(postCategory.Science);
+              break;
+            case 'technology':
+              postCategories.push(postCategory.Technology);
+              break;
+            default:
+              postCategories.push(postCategory.General);
+              break;
+          }
+        });
+
+        const country = verdict.country;
+        Logger.log(post.title);
+        Logger.log(categories);
+        Logger.log(country);
+
+        await this.prisma.post.update({
+          where: { id: post.id },
+          data: {
+            category: postCategories,
+          },
+        });
+      }
     });
   }
 }
