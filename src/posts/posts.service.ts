@@ -120,49 +120,17 @@ export class PostsService {
     return { data: result, total: total, page: page };
   }
 
-  // async get(token: number) {
-  //   const session = await this.prisma.session.findUnique({
-  //     where: { token: token },
-  //   });
-  //   return session;
-  // }
-
-  // start(dto: CreateSessionDto) {
-  //   return this.prisma.session.create({
-  //     data: {
-  //       senderIP: dto.clientIP,
-  //       senderClient: dto.clientName,
-  //       fileName: dto.fileName,
-  //       fileSize: dto.fileSize,
-  //       fileURI: dto.fileURI,
-  //       token: this.generateToken(),
-  //     },
-  //   });
-  // }
-
-  // join(dto: JoinSessionDto) {
-  //   return this.prisma.session.update({
-  //     where: { token: dto.token },
-  //     data: {
-  //       recieverIP: dto.clientIP,
-  //       senderClient: dto.clientName,
-  //       status: 'JOINED',
-  //     },
-  //   });
-  // }
-
-  // update(dto: UpdateSessionDto) {
-  //   return this.prisma.session.update({
-  //     where: { token: dto.token },
-  //     data: {
-  //       status: dto.status,
-  //     },
-  //   });
-  // }
-
-  // generateToken() {
-  //   const minCeiled = Math.ceil(0);
-  //   const maxFloored = Math.floor(99999);
-  //   return Math.floor(Math.random() * (maxFloored - minCeiled + 1) + minCeiled);
-  // }
+  @Cron('0 * * * *')
+  async deleteYesterdaysNews() {
+    const today = new Date();
+    const twentyFourHoursAgo = new Date(today.getTime() - 24 * 60 * 60 * 1000);
+    Logger.log(twentyFourHoursAgo);
+    await this.prisma.post.deleteMany({
+      where: {
+        createdAt: {
+          lte: twentyFourHoursAgo,
+        },
+      },
+    });
+  }
 }
