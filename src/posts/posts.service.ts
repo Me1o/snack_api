@@ -49,6 +49,7 @@ export class PostsService {
     const post = await this.prisma.post.findFirst({
       where: { AND: [{ source: 'aljazeera' }, { imageUrl: '' }] },
     });
+    if (!post) return;
     const response = await fetch(post.link);
     const html = await response.text();
     const $ = cheerio.load(html);
@@ -139,12 +140,20 @@ export class PostsService {
   async addCategoryToPost() {
     const post = await this.prisma.post.findFirst({
       where: {
-        category: {
-          isEmpty: true,
-        },
+        OR: [
+          {
+            category: {
+              isEmpty: true,
+            },
+          },
+          {
+            country: '',
+          },
+        ],
       },
     });
     if (!post) return;
+
     const openai = new OpenAI({
       apiKey: env.OPENAIKEY,
     });
@@ -213,6 +222,7 @@ export class PostsService {
           where: { id: post.id },
           data: {
             category: postCategories,
+            country: country,
           },
         });
       }

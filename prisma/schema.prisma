@@ -21,6 +21,7 @@ model Post {
   source     String  @default("")
   category    categories[] @default([])
   link         String  @default("")
+  country         String  @default("")
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 }
