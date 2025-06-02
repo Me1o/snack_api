@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { MiddlewareConsumer, Module, RequestMethod } from '@nestjs/common';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { PrismaModule } from './prisma/prisma.module';
@@ -6,7 +6,8 @@ import { PostsModule } from './posts/posts.module';
 import { ConfigModule } from '@nestjs/config';
 import { configuration } from './config/configuration';
 import { ScheduleModule } from '@nestjs/schedule';
-
+import { AuthModule } from './auth/auth.module';
+import { AuthMiddleware } from './auth/auth.middleware';
 @Module({
   imports: [
     PrismaModule,
@@ -17,8 +18,21 @@ import { ScheduleModule } from '@nestjs/schedule';
       isGlobal: true,
     }),
     ScheduleModule.forRoot(),
+    AuthModule,
   ],
   controllers: [AppController],
   providers: [AppService],
 })
-export class AppModule {}
+export class AppModule {
+  configure(consumer: MiddlewareConsumer) {
+    consumer
+      .apply(AuthMiddleware)
+      .exclude(
+        { path: 'auth/login', method: RequestMethod.POST },
+        { path: 'auth/register', method: RequestMethod.POST },
+        { path: 'auth/validate_email/:email', method: RequestMethod.GET },
+        { path: 'posts/:page', method: RequestMethod.GET },
+      )
+      .forRoutes('*');
+  }
+}

@@ -38,3 +38,11 @@ enum categories {
   Legal
   General
 }
+
+model User {
+  id        Int      @id @default(autoincrement())
+  email     String   @unique
+  password  String
+  name  String
+  createdAt DateTime @default(now())
+}
