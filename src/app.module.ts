@@ -8,10 +8,12 @@ import { configuration } from './config/configuration';
 import { ScheduleModule } from '@nestjs/schedule';
 import { AuthModule } from './auth/auth.module';
 import { AuthMiddleware } from './auth/auth.middleware';
+import { PreferencesModule } from './preferences/preferences.module';
 @Module({
   imports: [
     PrismaModule,
     PostsModule,
+    PreferencesModule,
     ConfigModule.forRoot({
       envFilePath: `${process.cwd()}/config/env/${process.env.NODE_ENV}.env`,
       load: [configuration],

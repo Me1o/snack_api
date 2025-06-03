@@ -14,16 +14,16 @@ datasource db {
 }
 
 model Post {
-  id           Int    @id @default(autoincrement())
-  title     String  @default("")
-  text     String  @default("")
-  imageUrl     String  @default("")
-  source     String  @default("")
-  category    categories[] @default([])
-  link         String  @default("")
-  country         String  @default("")
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  id        Int          @id @default(autoincrement())
+  title     String       @default("")
+  text      String       @default("")
+  imageUrl  String       @default("")
+  source    String       @default("")
+  category  categories[] @default([])
+  link      String       @default("")
+  country   String       @default("")
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
 }
 
 enum categories {
@@ -40,9 +40,31 @@ enum categories {
 }
 
 model User {
-  id        Int      @id @default(autoincrement())
-  email     String   @unique
-  password  String
-  name  String
+  id            Int         @id @default(autoincrement())
+  email         String      @unique
+  password      String
+  name          String
+  preferencesId Int?         @unique
+  preferences   Preferences? @relation(fields: [preferencesId], references: [id])
+  createdAt     DateTime    @default(now())
+}
+
+model Preferences {
+  id Int @id @default(autoincrement())
+
+  politics      String
+  sports        String
+  culture       String
+  economics     String
+  entertainment String
+  science       String
+  business      String
+  technology    String
+  legal         String
+  general       String
+
+  userId Int @unique
+  User      User?
+
   createdAt DateTime @default(now())
 }
