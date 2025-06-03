@@ -101,64 +101,65 @@ export class PostsService {
     });
 
     const WhereOrs = [];
-    for (const [key, value] of Object.entries(prefrences)) {
-      if (key != 'id' && key != 'createdAt') {
-        console.log(key);
-        let topic;
-        switch (key) {
-          case 'sports':
-            topic = postCategory.Sports;
-            break;
-          case 'politics':
-            topic = postCategory.Politics;
-            break;
-          case 'business':
-            topic = postCategory.Business;
-            break;
-          case 'culture':
-            topic = postCategory.Culture;
-            break;
-          case 'economics':
-            topic = postCategory.Economics;
-            break;
-          case 'entertainment':
-            topic = postCategory.Entertainment;
-            break;
-          case 'legal':
-            topic = postCategory.Legal;
-            break;
-          case 'science':
-            topic = postCategory.Science;
-            break;
-          case 'technology':
-            topic = postCategory.Technology;
-            break;
-          default:
-            topic = postCategory.General;
-            break;
-        }
-        const countries = value ? JSON.parse(value.toString()) : [];
-        if (countries.length > 0) {
-          countries.forEach((c) => {
-            WhereOrs.push({
-              AND: [
-                {
-                  category: {
-                    has: topic,
+    if (prefrences) {
+      for (const [key, value] of Object.entries(prefrences)) {
+        if (key != 'id' && key != 'createdAt') {
+          console.log(key);
+          let topic;
+          switch (key) {
+            case 'sports':
+              topic = postCategory.Sports;
+              break;
+            case 'politics':
+              topic = postCategory.Politics;
+              break;
+            case 'business':
+              topic = postCategory.Business;
+              break;
+            case 'culture':
+              topic = postCategory.Culture;
+              break;
+            case 'economics':
+              topic = postCategory.Economics;
+              break;
+            case 'entertainment':
+              topic = postCategory.Entertainment;
+              break;
+            case 'legal':
+              topic = postCategory.Legal;
+              break;
+            case 'science':
+              topic = postCategory.Science;
+              break;
+            case 'technology':
+              topic = postCategory.Technology;
+              break;
+            default:
+              topic = postCategory.General;
+              break;
+          }
+          const countries = value ? JSON.parse(value.toString()) : [];
+          if (countries.length > 0) {
+            countries.forEach((c) => {
+              WhereOrs.push({
+                AND: [
+                  {
+                    category: {
+                      has: topic,
+                    },
                   },
-                },
-                {
-                  country: {
-                    contains: c,
+                  {
+                    country: {
+                      contains: c,
+                    },
                   },
-                },
-              ],
+                ],
+              });
             });
-          });
+          }
         }
       }
     }
-
     const sharedWhereClause = {
       OR: WhereOrs,
     };
