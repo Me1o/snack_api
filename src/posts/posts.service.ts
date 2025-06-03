@@ -7,7 +7,7 @@ import { Post, postCategory } from './entities/posts.entity';
 import fetch from 'node-fetch';
 import * as cheerio from 'cheerio';
 import OpenAI from 'openai';
-import { env } from 'node:process';
+import { env, title } from 'node:process';
 
 @Injectable()
 export class PostsService {
@@ -134,77 +134,86 @@ export class PostsService {
     });
   }
 
-  async getPosts(page: number, userId: number) {
-    const prefrences = await this.prisma.preferences.findFirst({
-      where: { userId: userId },
-    });
-
+  async getPosts(page: number, userId?: number) {
     const WhereOrs = [];
-    if (prefrences) {
-      for (const [key, value] of Object.entries(prefrences)) {
-        if (key != 'id' && key != 'createdAt') {
-          let topic;
-          switch (key) {
-            case 'sports':
-              topic = postCategory.Sports;
-              break;
-            case 'politics':
-              topic = postCategory.Politics;
-              break;
-            case 'business':
-              topic = postCategory.Business;
-              break;
-            case 'culture':
-              topic = postCategory.Culture;
-              break;
-            case 'economics':
-              topic = postCategory.Economics;
-              break;
-            case 'entertainment':
-              topic = postCategory.Entertainment;
-              break;
-            case 'legal':
-              topic = postCategory.Legal;
-              break;
-            case 'science':
-              topic = postCategory.Science;
-              break;
-            case 'technology':
-              topic = postCategory.Technology;
-              break;
-            default:
-              topic = postCategory.General;
-              break;
-          }
-          const countries = value ? JSON.parse(value.toString()) : [];
-          if (countries.length > 0) {
-            countries.forEach((c) => {
-              WhereOrs.push({
-                AND: [
-                  {
-                    category: {
-                      has: topic,
+
+    if (userId) {
+      const prefrences = await this.prisma.preferences.findFirst({
+        where: { userId: userId },
+      });
+      if (prefrences) {
+        for (const [key, value] of Object.entries(prefrences)) {
+          if (key != 'id' && key != 'createdAt') {
+            let topic;
+            switch (key) {
+              case 'sports':
+                topic = postCategory.Sports;
+                break;
+              case 'politics':
+                topic = postCategory.Politics;
+                break;
+              case 'business':
+                topic = postCategory.Business;
+                break;
+              case 'culture':
+                topic = postCategory.Culture;
+                break;
+              case 'economics':
+                topic = postCategory.Economics;
+                break;
+              case 'entertainment':
+                topic = postCategory.Entertainment;
+                break;
+              case 'legal':
+                topic = postCategory.Legal;
+                break;
+              case 'science':
+                topic = postCategory.Science;
+                break;
+              case 'technology':
+                topic = postCategory.Technology;
+                break;
+              default:
+                topic = postCategory.General;
+                break;
+            }
+            const countries = value ? JSON.parse(value.toString()) : [];
+            if (countries.length > 0) {
+              countries.forEach((c) => {
+                WhereOrs.push({
+                  AND: [
+                    {
+                      category: {
+                        has: topic,
+                      },
                     },
-                  },
-                  {
-                    country: {
-                      contains: c,
+                    {
+                      country: {
+                        contains: c,
+                      },
                     },
-                  },
-                ],
+                  ],
+                });
               });
-            });
+            }
           }
         }
       }
     }
+
     const sharedWhereClause = {
       OR: WhereOrs,
     };
 
+    const filter =
+      sharedWhereClause.OR.length > 0
+        ? sharedWhereClause
+        : { title: { not: '' } };
+    console.log(filter);
+
     const [paginatedResults, totalCount] = await this.prisma.$transaction([
       this.prisma.post.findMany({
-        where: sharedWhereClause,
+        where: filter,
         skip: (page - 1) * 10,
         take: 10,
         orderBy: {

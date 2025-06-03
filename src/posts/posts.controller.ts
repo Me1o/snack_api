@@ -17,4 +17,9 @@ export class PostsController {
   get(@Req() req, @Param('page') page: number) {
     return this.postsService.getPosts(page, req.user.userId);
   }
+
+  @Get('explore/:page')
+  explore(@Req() req, @Param('page') page: number) {
+    return this.postsService.getPosts(page);
+  }
 }

@@ -33,7 +33,7 @@ export class AppModule {
         { path: 'auth/login', method: RequestMethod.POST },
         { path: 'auth/register', method: RequestMethod.POST },
         { path: 'auth/validate_email/:email', method: RequestMethod.GET },
-        //{ path: 'posts/:page', method: RequestMethod.GET },
+        { path: 'posts/explore/:page', method: RequestMethod.GET },
       )
       .forRoutes('*');
   }
