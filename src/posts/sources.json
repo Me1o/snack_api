@@ -6,5 +6,9 @@
   {
     "name": "aawsat",
     "url": "http://aawsat.com/feed"
+  },
+  {
+    "name": "france24",
+    "url": "https://www.france24.com/ar/rss"
   }
 ]

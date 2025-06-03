@@ -21,25 +21,31 @@ export class PostsService {
     const parser = new Parser();
     Sources.forEach(async (s) => {
       const feed = await parser.parseURL(s.url);
+
       let posts: Post[] = [];
       if (feed.link == 'https://www.ajnet.me') {
         //aljazeera feed
-        posts = await this.parseAljazeeraFeed(feed.items);
+        posts = await this.parseFeed(feed.items, 'aljazeera');
         posts.forEach((p) => this.savePostIfNotSaved(p));
       }
       if (feed.feedUrl == 'https://aawsat.com/') {
         //aawsat feed
-        posts = await this.parseAawsatFeed(feed.items);
+        posts = await this.parseFeed(feed.items, 'aawsat');
+        posts.forEach((p) => this.savePostIfNotSaved(p));
+      }
+      if (feed.feedUrl == 'https://www.france24.com/ar/rss') {
+        //france24 feed
+        posts = await this.parseFeed(feed.items, 'france24');
         posts.forEach((p) => this.savePostIfNotSaved(p));
       }
     });
   }
 
-  async parseAljazeeraFeed(items: any): Promise<Post[]> {
+  async parseFeed(items: any, source: string): Promise<Post[]> {
     const posts: Post[] = [];
     await items.forEach(async (i: any) => {
       const post = new Post();
-      post.source = 'aljazeera';
+      post.source = source;
       post.title = i.title;
       post.text = i.contentSnippet;
       post.link = i.link;
@@ -70,20 +76,6 @@ export class PostsService {
     });
   }
 
-  async parseAawsatFeed(items: any): Promise<Post[]> {
-    const posts: Post[] = [];
-    await items.forEach(async (i: any) => {
-      const post = new Post();
-      post.source = 'aawsat';
-      post.title = i.title;
-      post.text = i.contentSnippet;
-      post.link = i.link;
-      post.category = [];
-      posts.push(post);
-    });
-    return posts;
-  }
-
   @Cron('* * * * *')
   async getAawsatImage() {
     const post = await this.prisma.post.findFirst({
@@ -94,6 +86,27 @@ export class PostsService {
     const html = await response.text();
     const $ = cheerio.load(html);
     const imageUrl = $('.entry-media > .img-field > img').attr('src');
+
+    return this.prisma.post.update({
+      where: { id: post.id },
+      data: {
+        imageUrl: imageUrl ? imageUrl : 'null',
+      },
+    });
+  }
+
+  @Cron('* * * * *')
+  async getFrance24Image() {
+    const post = await this.prisma.post.findFirst({
+      where: { AND: [{ source: 'france24' }, { imageUrl: '' }] },
+    });
+    if (!post) return;
+    const response = await fetch(post.link);
+    const html = await response.text();
+    const $ = cheerio.load(html);
+    const imageUrl = $(
+      '.t-content__main-media > .m-figure > picture > img',
+    ).attr('src');
 
     return this.prisma.post.update({
       where: { id: post.id },
