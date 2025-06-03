@@ -14,6 +14,7 @@ export class PostsService {
   constructor(private readonly prisma: PrismaService) {}
 
   @Cron('*/10 * * * *')
+  //@Cron('* * * * *')
   parsePosts() {
     // eslint-disable-next-line @typescript-eslint/no-var-requires
     const Parser = require('rss-parser');
@@ -24,6 +25,11 @@ export class PostsService {
       if (feed.link == 'https://www.ajnet.me') {
         //aljazeera feed
         posts = await this.parseAljazeeraFeed(feed.items);
+        posts.forEach((p) => this.savePostIfNotSaved(p));
+      }
+      if (feed.feedUrl == 'https://aawsat.com/') {
+        //aawsat feed
+        posts = await this.parseAawsatFeed(feed.items);
         posts.forEach((p) => this.savePostIfNotSaved(p));
       }
     });
@@ -60,6 +66,39 @@ export class PostsService {
       where: { id: post.id },
       data: {
         imageUrl: imageUrl ? 'https://www.ajnet.me' + imageUrl : 'null',
+      },
+    });
+  }
+
+  async parseAawsatFeed(items: any): Promise<Post[]> {
+    const posts: Post[] = [];
+    await items.forEach(async (i: any) => {
+      const post = new Post();
+      post.source = 'aawsat';
+      post.title = i.title;
+      post.text = i.contentSnippet;
+      post.link = i.link;
+      post.category = [];
+      posts.push(post);
+    });
+    return posts;
+  }
+
+  @Cron('* * * * *')
+  async getAawsatImage() {
+    const post = await this.prisma.post.findFirst({
+      where: { AND: [{ source: 'aawsat' }, { imageUrl: '' }] },
+    });
+    if (!post) return;
+    const response = await fetch(post.link);
+    const html = await response.text();
+    const $ = cheerio.load(html);
+    const imageUrl = $('.entry-media > .img-field > img').attr('src');
+
+    return this.prisma.post.update({
+      where: { id: post.id },
+      data: {
+        imageUrl: imageUrl ? imageUrl : 'null',
       },
     });
   }
@@ -104,7 +143,6 @@ export class PostsService {
     if (prefrences) {
       for (const [key, value] of Object.entries(prefrences)) {
         if (key != 'id' && key != 'createdAt') {
-          console.log(key);
           let topic;
           switch (key) {
             case 'sports':
@@ -231,7 +269,6 @@ export class PostsService {
     completion.then(async (result) => {
       if (result.choices[0].message.refusal == null) {
         const verdict = JSON.parse(result.choices[0].message.content);
-        Logger.log(verdict);
 
         const categories = verdict.category.split(',');
         const postCategories: postCategory[] = [];
@@ -272,9 +309,6 @@ export class PostsService {
         });
 
         const country = verdict.country;
-        Logger.log(post.title);
-        Logger.log(categories);
-        Logger.log(country);
 
         await this.prisma.post.update({
           where: { id: post.id },
