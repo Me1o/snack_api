@@ -218,10 +218,7 @@ export class PostsService {
       OR: WhereOrs,
     };
 
-    const filter =
-      sharedWhereClause.OR.length > 0
-        ? sharedWhereClause
-        : { title: { not: '' } };
+    const filter = sharedWhereClause.OR.length > 0 ? sharedWhereClause : {};
     console.log(filter);
 
     const [paginatedResults, totalCount] = await this.prisma.$transaction([
@@ -234,7 +231,7 @@ export class PostsService {
         },
       }),
       this.prisma.post.count({
-        where: sharedWhereClause,
+        where: filter,
       }),
     ]);
 
