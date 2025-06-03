@@ -4,7 +4,6 @@ import { Cron } from '@nestjs/schedule';
 import { Logger } from '@nestjs/common';
 import * as Sources from './sources.json';
 import { Post, postCategory } from './entities/posts.entity';
-import { paginate } from 'nestjs-prisma-pagination';
 import fetch from 'node-fetch';
 import * as cheerio from 'cheerio';
 import OpenAI from 'openai';
@@ -96,31 +95,89 @@ export class PostsService {
     });
   }
 
-  async getPosts(page: number) {
-    // const query = paginate(
-    //   {
-    //     page: 1,
-    //     limit: 10,
-    //     from: '2023-01-01T00:00:00.000Z',
-    //     to: '2023-12-31T22:59:59.000Z',
-    //     search: 'foo',
-    //   },
-    //   {
-    //     dateAttr: 'at',
-    //     enabled: false,
-    //     includes: ['post', 'user.agent.auth'],
-    //     search: ['fullname', 'reference'],
-    //     orderBy: { fullname: 'asc' },
-    //   },
-    // );
-
-    const query = paginate({
-      page: page,
-      limit: 10,
+  async getPosts(page: number, userId: number) {
+    const prefrences = await this.prisma.preferences.findFirst({
+      where: { userId: userId },
     });
-    const result = await this.prisma.post.findMany(query);
-    const total = await this.prisma.post.count;
-    return { data: result, total: total, page: page };
+
+    const WhereOrs = [];
+    for (const [key, value] of Object.entries(prefrences)) {
+      if (key != 'id' && key != 'createdAt') {
+        console.log(key);
+        let topic;
+        switch (key) {
+          case 'sports':
+            topic = postCategory.Sports;
+            break;
+          case 'politics':
+            topic = postCategory.Politics;
+            break;
+          case 'business':
+            topic = postCategory.Business;
+            break;
+          case 'culture':
+            topic = postCategory.Culture;
+            break;
+          case 'economics':
+            topic = postCategory.Economics;
+            break;
+          case 'entertainment':
+            topic = postCategory.Entertainment;
+            break;
+          case 'legal':
+            topic = postCategory.Legal;
+            break;
+          case 'science':
+            topic = postCategory.Science;
+            break;
+          case 'technology':
+            topic = postCategory.Technology;
+            break;
+          default:
+            topic = postCategory.General;
+            break;
+        }
+        const countries = value ? JSON.parse(value.toString()) : [];
+        if (countries.length > 0) {
+          countries.forEach((c) => {
+            WhereOrs.push({
+              AND: [
+                {
+                  category: {
+                    has: topic,
+                  },
+                },
+                {
+                  country: {
+                    contains: c,
+                  },
+                },
+              ],
+            });
+          });
+        }
+      }
+    }
+
+    const sharedWhereClause = {
+      OR: WhereOrs,
+    };
+
+    const [paginatedResults, totalCount] = await this.prisma.$transaction([
+      this.prisma.post.findMany({
+        where: sharedWhereClause,
+        skip: (page - 1) * 10,
+        take: 10,
+        orderBy: {
+          createdAt: 'desc',
+        },
+      }),
+      this.prisma.post.count({
+        where: sharedWhereClause,
+      }),
+    ]);
+
+    return { data: paginatedResults, total: totalCount, page: page };
   }
 
   @Cron('0 * * * *')

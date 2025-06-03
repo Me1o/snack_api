@@ -14,7 +14,7 @@ export class PostsController {
   // }
 
   @Get(':page')
-  get(@Param('page') page: number) {
-    return this.postsService.getPosts(page);
+  get(@Req() req, @Param('page') page: number) {
+    return this.postsService.getPosts(page, req.user.userId);
   }
 }
