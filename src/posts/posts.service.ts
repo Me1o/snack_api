@@ -253,7 +253,8 @@ export class PostsService {
 
   @Cron('* * * * *')
   async addCategoryToPost() {
-    const post = await this.prisma.post.findFirst({
+    const posts = await this.prisma.post.findMany({
+      take: 5,
       where: {
         OR: [
           {
@@ -267,76 +268,79 @@ export class PostsService {
         ],
       },
     });
-    if (!post) return;
+    if (posts.length == 0) return;
 
     const openai = new OpenAI({
       apiKey: env.OPENAIKEY,
     });
 
-    const query =
-      'take this text:' +
-      post.title +
-      ', ' +
-      post.text +
-      '. what is this text about about and under what of the following categories does it fall: Politics, Sports, Culture, Economics, Entertainment, Science, Business, Technology, Legal. also, if applicable what country/ countries does this relate to (using ISO 3166-1 alpha-3 codes). respond as {"country": "SDN, QAT", "category": "Sports, Politics"}';
-    const completion = openai.chat.completions.create({
-      model: 'gpt-4o-mini',
-      store: true,
-      messages: [{ role: 'user', content: query }],
-    });
+    posts.forEach((post) => {
+      const query =
+        'take this text:' +
+        post.title +
+        ', ' +
+        post.text +
+        '. what is this text about about and under what of the following categories does it fall: Politics, Sports, Culture, Economics, Entertainment, Science, Business, Technology, Legal. also, if applicable what country/ countries does this relate to (using ISO 3166-1 alpha-3 codes). respond as {"country": "SDN, QAT", "category": "Sports, Politics"}';
+      const completion = openai.chat.completions.create({
+        model: 'gpt-4o-mini',
+        store: true,
+        messages: [{ role: 'user', content: query }],
+      });
 
-    completion.then(async (result) => {
-      if (result.choices[0].message.refusal == null) {
-        const verdict = JSON.parse(result.choices[0].message.content);
+      completion.then(async (result) => {
+        if (result.choices[0].message.refusal == null) {
+          const verdict = JSON.parse(result.choices[0].message.content);
 
-        const categories = verdict.category.split(',');
-        const postCategories: postCategory[] = [];
+          const categories = verdict.category.split(',');
+          const postCategories: postCategory[] = [];
 
-        categories.forEach((cat: string) => {
-          switch (cat.toLowerCase()) {
-            case 'sports':
-              postCategories.push(postCategory.Sports);
-              break;
-            case 'politics':
-              postCategories.push(postCategory.Politics);
-              break;
-            case 'business':
-              postCategories.push(postCategory.Business);
-              break;
-            case 'culture':
-              postCategories.push(postCategory.Culture);
-              break;
-            case 'economics':
-              postCategories.push(postCategory.Economics);
-              break;
-            case 'entertainment':
-              postCategories.push(postCategory.Entertainment);
-              break;
-            case 'legal':
-              postCategories.push(postCategory.Legal);
-              break;
-            case 'science':
-              postCategories.push(postCategory.Science);
-              break;
-            case 'technology':
-              postCategories.push(postCategory.Technology);
-              break;
-            default:
-              postCategories.push(postCategory.General);
-              break;
-          }
-        });
+          categories.forEach((cat: string) => {
+            switch (cat.toLowerCase()) {
+              case 'sports':
+                postCategories.push(postCategory.Sports);
+                break;
+              case 'politics':
+                postCategories.push(postCategory.Politics);
+                break;
+              case 'business':
+                postCategories.push(postCategory.Business);
+                break;
+              case 'culture':
+                postCategories.push(postCategory.Culture);
+                break;
+              case 'economics':
+                postCategories.push(postCategory.Economics);
+                break;
+              case 'entertainment':
+                postCategories.push(postCategory.Entertainment);
+                break;
+              case 'legal':
+                postCategories.push(postCategory.Legal);
+                break;
+              case 'science':
+                postCategories.push(postCategory.Science);
+                break;
+              case 'technology':
+                postCategories.push(postCategory.Technology);
+                break;
+              default:
+                postCategories.push(postCategory.General);
+                break;
+            }
+          });
 
-        const country = verdict.country;
+          const country = verdict.country;
+          console.log(country + '/' + postCategories);
 
-        await this.prisma.post.update({
-          where: { id: post.id },
-          data: {
-            category: postCategories,
-            country: country,
-          },
-        });
-      }
+          await this.prisma.post.update({
+            where: { id: post.id },
+            data: {
+              category: postCategories,
+              country: country,
+            },
+          });
+        }
+      });
     });
   }
 }
