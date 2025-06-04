@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Post } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, Req } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { RegisterDto } from './dto/register-dto';
 import { LoginDto } from './dto/login-dto';
@@ -20,5 +20,10 @@ export class AuthController {
   @Get('validate_email/:email')
   async validateEmail(@Param('email') email: string) {
     return this.authService.validateUserExistence(email);
+  }
+
+  @Get('user')
+  get(@Req() req) {
+    return this.authService.getUser(req.user.userId);
   }
 }

@@ -330,8 +330,6 @@ export class PostsService {
           });
 
           const country = verdict.country;
-          console.log(country + '/' + postCategories);
-
           await this.prisma.post.update({
             where: { id: post.id },
             data: {
