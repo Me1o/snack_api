@@ -7,6 +7,7 @@ export class Post {
   link: string = '';
   country: string = '';
   category: postCategory[] = [];
+  tweeted: boolean = false;
   createdAt: string = '';
   updatedAt: string = '';
 }

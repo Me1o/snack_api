@@ -8,6 +8,7 @@ import fetch from 'node-fetch';
 import * as cheerio from 'cheerio';
 import OpenAI from 'openai';
 import { env, title } from 'node:process';
+import puppeteer from 'puppeteer';
 
 @Injectable()
 export class PostsService {
@@ -339,6 +340,75 @@ export class PostsService {
           });
         }
       });
+    });
+  }
+
+  @Cron('* * * * *')
+  async tweet() {
+    const post = await this.prisma.post.findFirst({
+      where: { tweeted: false },
+    });
+    if (!post) return;
+
+    let tags = '';
+    if (post.country != '') {
+      const countries = post.country.split(',');
+      countries.forEach((c) => {
+        tags = tags + ' #' + c;
+      });
+    }
+    const tweet = post.title + ' ' + tags + ' https://snakat.app/';
+
+    const browser = await puppeteer.launch({
+      headless: false,
+      args: [
+        '--disable-dev-shm-usage',
+        '--shm-size=1gb', // --shm-size=1gb to fix Protocol error (Runtime.callFunctionOn)
+        '--no-sandbox', // configuration for heroku deployment
+        '--disable-setuid-sandbox', // configuration for heroku deployment
+      ],
+    });
+
+    const page = await browser.newPage();
+    // Login
+    await page.goto('https://x.com/i/flow/login', {
+      waitUntil: 'networkidle2',
+    });
+    const usernameInput = await page.waitForSelector('input[name="text"]');
+    await usernameInput.type(env.TWITTER_USERNAME, { delay: 200 });
+    await page.keyboard.press('Enter');
+
+    const passwordInput = await page.waitForSelector('input[name="password"]');
+    await passwordInput.type(env.TWITTER_PASSWORD, { delay: 200 });
+    await page.keyboard.press('Enter');
+    // Wait for the home page to load
+    await page.waitForNavigation({ waitUntil: 'networkidle2' });
+    // Start posting a tweet
+    await page.waitForSelector('[data-testid="tweetTextarea_0"]', {
+      visible: true,
+    });
+    await page.click('[data-testid="tweetTextarea_0"]');
+    const tweetText = `${tweet}`;
+    await page.keyboard.type(tweetText, { delay: 100 });
+    // Wait for the tweet button and click it
+    // Fixed selector - using the correct data-testid from your screenshot
+    await page.waitForSelector('[data-testid="tweetButtonInline"]', {
+      visible: true,
+    });
+    await page.click('[data-testid="tweetButtonInline"]');
+
+    // Add a delay to ensure the post completes
+    await new Promise((resolve) => setTimeout(resolve, 3000));
+    console.log('Tweet posted successfully!');
+
+    // Uncomment to close browser when done
+    await browser.close();
+
+    await this.prisma.post.update({
+      where: { id: post.id },
+      data: {
+        tweeted: true,
+      },
     });
   }
 }
