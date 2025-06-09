@@ -343,7 +343,7 @@ export class PostsService {
     });
   }
 
-  @Cron('* * * * *')
+  //  @Cron('* * * * *')
   async tweet() {
     const post = await this.prisma.post.findFirst({
       where: { tweeted: false },
