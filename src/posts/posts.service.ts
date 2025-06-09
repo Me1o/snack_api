@@ -360,7 +360,7 @@ export class PostsService {
     const tweet = post.title + ' ' + tags + ' https://snakat.app/';
 
     const browser = await puppeteer.launch({
-      headless: false,
+      headless: true,
       args: [
         '--disable-dev-shm-usage',
         '--shm-size=1gb', // --shm-size=1gb to fix Protocol error (Runtime.callFunctionOn)
