@@ -381,6 +381,7 @@ export class PostsService {
     if (post.country != '') {
       const postCountries = post.country.split(',');
       postCountries.forEach((c) => {
+        c = c.trim();
         let name = countries.getName(c, 'ar');
         if (name != 'undefined' && name != undefined) {
           name = name.trim();
