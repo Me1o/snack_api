@@ -363,7 +363,7 @@ export class PostsService {
     });
   }
 
-  //@Cron('*/5 * * * *')
+  @Cron('*/7 * * * *')
   async tweet() {
     // eslint-disable-next-line @typescript-eslint/no-var-requires
     const countries = require('i18n-iso-countries');
