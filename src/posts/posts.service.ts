@@ -381,8 +381,12 @@ export class PostsService {
     if (post.country != '') {
       const postCountries = post.country.split(',');
       postCountries.forEach((c) => {
-        const name = countries.getName(c, 'ar');
-        if (name != 'undefined' && name != undefined) tags = tags + ' #' + name;
+        let name = countries.getName(c, 'ar');
+        if (name != 'undefined' && name != undefined) {
+          name = name.trim();
+          name = name.replaceAll(' ', '_');
+          tags = tags + ' #' + name;
+        }
       });
     }
     const tweet =
