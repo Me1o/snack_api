@@ -344,6 +344,8 @@ export class PostsService {
 
   @Cron('* * * * *')
   async tweet() {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const countries = require('i18n-iso-countries');
     const today = new Date();
     const hourAgo = new Date(today.getTime() - 1 * 60 * 60 * 1000);
     const post = await this.prisma.post.findFirst({
@@ -377,12 +379,16 @@ export class PostsService {
 
     let tags = '';
     if (post.country != '') {
-      const countries = post.country.split(',');
-      countries.forEach((c) => {
-        tags = tags + ' #' + c;
+      const postCountries = post.country.split(',');
+      postCountries.forEach((c) => {
+        const name = countries.getName(c, 'ar');
+        tags = tags + ' #' + name;
       });
     }
-    const tweet = post.title + ' ' + tags + ' https://snakat.app/';
+    const tweet =
+      post.title + ' ' + '\n' + tags + '\n' + 'المزيد علي: https://snakat.app/';
+    Logger.log(tweet);
+    return;
     const webhook =
       'https://maker.ifttt.com/trigger/hooked/json/with/key/bItr6_qmQgxJ6wy_UCo70i';
 
