@@ -1,5 +1,7 @@
-import { Body, Controller, Get, Param, Post, Req } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, Query, Req } from '@nestjs/common';
 import { PostsService } from './posts.service';
+import { postCategory } from './entities/posts.entity';
+import { query } from 'express';
 // import { CreateSessionDto } from './dto/create-session.dto';
 // import { JoinSessionDto } from './dto/join-session.dto';
 
@@ -14,12 +16,20 @@ export class PostsController {
   // }
 
   @Get(':page')
-  get(@Req() req, @Param('page') page: number) {
-    return this.postsService.getPosts(page, req.user.userId);
+  get(
+    @Req() req,
+    @Param('page') page: number,
+    @Query('category') category: postCategory,
+  ) {
+    return this.postsService.getPosts(page, req.user.userId, category);
   }
 
   @Get('explore/:page')
-  explore(@Req() req, @Param('page') page: number) {
-    return this.postsService.getPosts(page);
+  explore(
+    @Req() req,
+    @Param('page') page: number,
+    @Query('category') category: postCategory,
+  ) {
+    return this.postsService.getPosts(page, null, category);
   }
 }

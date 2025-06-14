@@ -1,7 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { Cron } from '@nestjs/schedule';
-import { Logger } from '@nestjs/common';
 import * as Sources from './sources.json';
 import { Post, postCategory } from './entities/posts.entity';
 import fetch from 'node-fetch';
@@ -147,68 +146,91 @@ export class PostsService {
     });
   }
 
-  async getPosts(page: number, userId?: number) {
+  async getPosts(page: number, userId?: number, category?: postCategory) {
     const WhereOrs = [];
 
-    if (userId) {
-      const prefrences = await this.prisma.preferences.findFirst({
-        where: { userId: userId },
-      });
-      if (prefrences) {
-        for (const [key, value] of Object.entries(prefrences)) {
-          if (key != 'id' && key != 'createdAt') {
-            let topic;
-            switch (key) {
-              case 'sports':
-                topic = postCategory.Sports;
-                break;
-              case 'politics':
-                topic = postCategory.Politics;
-                break;
-              case 'business':
-                topic = postCategory.Business;
-                break;
-              case 'culture':
-                topic = postCategory.Culture;
-                break;
-              case 'economics':
-                topic = postCategory.Economics;
-                break;
-              case 'entertainment':
-                topic = postCategory.Entertainment;
-                break;
-              case 'legal':
-                topic = postCategory.Legal;
-                break;
-              case 'science':
-                topic = postCategory.Science;
-                break;
-              case 'technology':
-                topic = postCategory.Technology;
-                break;
-              default:
-                topic = postCategory.General;
-                break;
-            }
-            const countries = value ? JSON.parse(value.toString()) : [];
-            if (countries.length > 0) {
-              countries.forEach((c) => {
-                WhereOrs.push({
-                  AND: [
-                    {
-                      category: {
-                        has: topic,
-                      },
+    if (userId || category) {
+      let prefrences = {};
+      if (userId) {
+        prefrences = await this.prisma.preferences.findFirst({
+          where: { userId: userId },
+        });
+      }
+      let prefObject = {};
+      if (category) {
+        const key = category.toLowerCase();
+        prefObject = {};
+        prefObject[key] = prefrences[key];
+      } else prefObject = prefrences;
+
+      for (const [key, value] of Object.entries(prefObject)) {
+        if (key != 'id' && key != 'createdAt') {
+          let topic;
+          switch (key) {
+            case 'sports':
+              topic = postCategory.Sports;
+              break;
+            case 'politics':
+              topic = postCategory.Politics;
+              break;
+            case 'business':
+              topic = postCategory.Business;
+              break;
+            case 'culture':
+              topic = postCategory.Culture;
+              break;
+            case 'economics':
+              topic = postCategory.Economics;
+              break;
+            case 'entertainment':
+              topic = postCategory.Entertainment;
+              break;
+            case 'legal':
+              topic = postCategory.Legal;
+              break;
+            case 'science':
+              topic = postCategory.Science;
+              break;
+            case 'technology':
+              topic = postCategory.Technology;
+              break;
+            default:
+              topic = postCategory.General;
+              break;
+          }
+          const countries = value ? JSON.parse(value.toString()) : [];
+          if (countries.length > 0) {
+            countries.forEach((c) => {
+              WhereOrs.push({
+                AND: [
+                  {
+                    category: {
+                      has: topic,
                     },
-                    {
-                      country: {
-                        contains: c,
-                      },
+                  },
+                  {
+                    country: {
+                      contains: c,
                     },
-                  ],
-                });
+                  },
+                ],
               });
-            }
+            });
+          } else {
+            WhereOrs.push({
+              AND: [
+                {
+                  category: {
+                    has: topic,
+                  },
+                },
+                {
+                  country: {
+                    contains: '',
+                  },
+                },
+              ],
+            });
           }
         }
       }
@@ -219,7 +241,6 @@ export class PostsService {
     };
 
     const filter = sharedWhereClause.OR.length > 0 ? sharedWhereClause : {};
-    console.log(filter);
 
     const [paginatedResults, totalCount] = await this.prisma.$transaction([
       this.prisma.post.findMany({
@@ -342,7 +363,7 @@ export class PostsService {
     });
   }
 
-  @Cron('*/5 * * * *')
+  //@Cron('*/5 * * * *')
   async tweet() {
     // eslint-disable-next-line @typescript-eslint/no-var-requires
     const countries = require('i18n-iso-countries');
