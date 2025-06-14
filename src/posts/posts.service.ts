@@ -342,7 +342,7 @@ export class PostsService {
     });
   }
 
-  @Cron('* * * * *')
+  @Cron('*/5 * * * *')
   async tweet() {
     // eslint-disable-next-line @typescript-eslint/no-var-requires
     const countries = require('i18n-iso-countries');
@@ -382,13 +382,12 @@ export class PostsService {
       const postCountries = post.country.split(',');
       postCountries.forEach((c) => {
         const name = countries.getName(c, 'ar');
-        tags = tags + ' #' + name;
+        if (name != 'undefined' && name != undefined) tags = tags + ' #' + name;
       });
     }
     const tweet =
       post.title + ' ' + '\n' + tags + '\n' + 'المزيد علي: https://snakat.app/';
-    Logger.log(tweet);
-    return;
+
     const webhook =
       'https://maker.ifttt.com/trigger/hooked/json/with/key/bItr6_qmQgxJ6wy_UCo70i';
 
