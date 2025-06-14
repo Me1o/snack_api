@@ -344,6 +344,8 @@ export class PostsService {
 
   @Cron('* * * * *')
   async tweet() {
+    const today = new Date();
+    const hourAgo = new Date(today.getTime() - 1 * 60 * 60 * 1000);
     const post = await this.prisma.post.findFirst({
       where: {
         AND: [
@@ -361,6 +363,11 @@ export class PostsService {
           {
             imageUrl: {
               not: '',
+            },
+          },
+          {
+            createdAt: {
+              gte: hourAgo,
             },
           },
         ],
