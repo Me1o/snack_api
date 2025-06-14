@@ -344,23 +344,59 @@ export class PostsService {
 
   @Cron('* * * * *')
   async tweet() {
-    // const post = await this.prisma.post.findFirst({
-    //   where: { tweeted: false },
-    // });
-    // if (!post) return;
-    // let tags = '';
-    // if (post.country != '') {
-    //   const countries = post.country.split(',');
-    //   countries.forEach((c) => {
-    //     tags = tags + ' #' + c;
-    //   });
-    // }
-    // const tweet = post.title + ' ' + tags + ' https://snakat.app/';
-    // await this.prisma.post.update({
-    //   where: { id: post.id },
-    //   data: {
-    //     tweeted: true,
-    //   },
-    // });
+    const post = await this.prisma.post.findFirst({
+      where: {
+        AND: [
+          { tweeted: false },
+          {
+            category: {
+              isEmpty: false,
+            },
+          },
+          {
+            imageUrl: {
+              not: 'null',
+            },
+          },
+          {
+            imageUrl: {
+              not: '',
+            },
+          },
+        ],
+      },
+    });
+    if (!post) return;
+
+    let tags = '';
+    if (post.country != '') {
+      const countries = post.country.split(',');
+      countries.forEach((c) => {
+        tags = tags + ' #' + c;
+      });
+    }
+    const tweet = post.title + ' ' + tags + ' https://snakat.app/';
+    const webhook =
+      'https://maker.ifttt.com/trigger/hooked/json/with/key/bItr6_qmQgxJ6wy_UCo70i';
+
+    const response = await fetch(webhook, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ text: tweet, img: post.imageUrl }),
+    });
+
+    if (!response.ok) {
+      throw new Error(
+        `Webhook call failed: ${response.status} ${response.statusText}`,
+      );
+    }
+    await this.prisma.post.update({
+      where: { id: post.id },
+      data: {
+        tweeted: true,
+      },
+    });
   }
 }
