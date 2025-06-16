@@ -35,7 +35,7 @@ export class PostsController {
   }
 
   @Get('analize/:id')
-  analize(@Param('id') id: string) {
-    return this.postsService.analize(id);
+  analize(@Req() req, @Param('id') id: string) {
+    return this.postsService.analize(id, req.ip);
   }
 }

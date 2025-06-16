@@ -443,9 +443,19 @@ export class PostsService {
     });
   }
 
-  async analize(id: string) {
+  async analize(id: string, ip: string) {
     const analysis = await this.cacheManager.get('analysis-' + id);
+    let credit: number = await this.cacheManager.get('credit-' + ip);
+    if (credit == undefined) {
+      credit = 3;
+    }
     if (analysis) return { data: analysis, ok: true, cached: true };
+    if (credit == 0)
+      return {
+        data: 'لقد تجاوزت الحد، حاول مرة اخرى خلال ٥ دقائق',
+        ok: false,
+        cached: false,
+      };
     const postId = parseInt(id);
     let verdict = '';
     const post = await this.prisma.post.findFirst({
@@ -474,6 +484,7 @@ export class PostsService {
         await this.cacheManager.set('analysis-' + postId, verdict, 864000000);
       }
     });
+    await this.cacheManager.set('credit-' + ip, credit - 1, 300000);
     return { data: verdict, ok: true, cached: false };
   }
 }
