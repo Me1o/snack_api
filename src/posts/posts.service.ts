@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { Cron } from '@nestjs/schedule';
 import * as Sources from './sources.json';
@@ -7,10 +7,15 @@ import fetch from 'node-fetch';
 import * as cheerio from 'cheerio';
 import OpenAI from 'openai';
 import { env, title } from 'node:process';
+import { CACHE_MANAGER } from '@nestjs/cache-manager';
+import { Cache } from '@nestjs/cache-manager';
 
 @Injectable()
 export class PostsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    @Inject(CACHE_MANAGER) private cacheManager: Cache,
+  ) {}
 
   @Cron('*/10 * * * *')
   //@Cron('* * * * *')
@@ -436,5 +441,39 @@ export class PostsService {
         tweeted: true,
       },
     });
+  }
+
+  async analize(id: string) {
+    const analysis = await this.cacheManager.get('analysis-' + id);
+    if (analysis) return { data: analysis, ok: true, cached: true };
+    const postId = parseInt(id);
+    let verdict = '';
+    const post = await this.prisma.post.findFirst({
+      where: { id: postId },
+    });
+    if (!post) return { data: verdict, ok: false, cached: false };
+
+    const openai = new OpenAI({
+      apiKey: env.OPENAIKEY,
+    });
+
+    const query =
+      'i will give you an article title and text, i need you to analyze it in arabic. title:' +
+      post.title +
+      ', text:' +
+      post.text;
+    const completion = openai.chat.completions.create({
+      model: 'gpt-4o-mini',
+      store: true,
+      messages: [{ role: 'user', content: query }],
+    });
+
+    await completion.then(async (result) => {
+      if (result.choices[0].message.refusal == null) {
+        verdict = result.choices[0].message.content;
+        await this.cacheManager.set('analysis-' + postId, verdict, 864000000);
+      }
+    });
+    return { data: verdict, ok: true, cached: false };
   }
 }

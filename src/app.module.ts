@@ -9,6 +9,7 @@ import { ScheduleModule } from '@nestjs/schedule';
 import { AuthModule } from './auth/auth.module';
 import { AuthMiddleware } from './auth/auth.middleware';
 import { PreferencesModule } from './preferences/preferences.module';
+import { CacheModule } from '@nestjs/cache-manager';
 @Module({
   imports: [
     PrismaModule,
@@ -21,6 +22,7 @@ import { PreferencesModule } from './preferences/preferences.module';
     }),
     ScheduleModule.forRoot(),
     AuthModule,
+    CacheModule.register(),
   ],
   controllers: [AppController],
   providers: [AppService],
