@@ -17,15 +17,14 @@ export class PostsService {
     @Inject(CACHE_MANAGER) private cacheManager: Cache,
   ) {}
 
-  @Cron('*/10 * * * *')
-  //@Cron('* * * * *')
+  //@Cron('*/10 * * * *')
+  @Cron('* * * * *')
   parsePosts() {
     // eslint-disable-next-line @typescript-eslint/no-var-requires
     const Parser = require('rss-parser');
     const parser = new Parser();
     Sources.forEach(async (s) => {
       const feed = await parser.parseURL(s.url);
-
       let posts: Post[] = [];
       if (feed.link == 'https://www.ajnet.me') {
         //aljazeera feed
@@ -48,13 +47,18 @@ export class PostsService {
   async parseFeed(items: any, source: string): Promise<Post[]> {
     const posts: Post[] = [];
     await items.forEach(async (i: any) => {
-      const post = new Post();
-      post.source = source;
-      post.title = i.title;
-      post.text = i.contentSnippet;
-      post.link = i.link;
-      post.category = [];
-      posts.push(post);
+      const isoDate = new Date(i.isoDate);
+      const today = new Date();
+      const minsAgo = new Date(today.getTime() - 10 * 60 * 1000);
+      if (isoDate > minsAgo) {
+        const post = new Post();
+        post.source = source;
+        post.title = i.title;
+        post.text = i.contentSnippet;
+        post.link = i.link;
+        post.category = [];
+        posts.push(post);
+      }
     });
     return posts;
   }
@@ -267,7 +271,7 @@ export class PostsService {
   @Cron('0 * * * *')
   async deleteYesterdaysNews() {
     const today = new Date();
-    const twentyFourHoursAgo = new Date(today.getTime() - 24 * 60 * 60 * 1000);
+    const twentyFourHoursAgo = new Date(today.getTime() - 48 * 60 * 60 * 1000);
     await this.prisma.post.deleteMany({
       where: {
         createdAt: {
@@ -306,7 +310,7 @@ export class PostsService {
         post.title +
         ', ' +
         post.text +
-        '. what is this text about about and under what of the following categories does it fall: Politics, Sports, Culture, Economics, Entertainment, Science, Business, Technology, Legal. also, if applicable what country/ countries does this relate to (using ISO 3166-1 alpha-3 codes). respond as {"country": "SDN, QAT", "category": "Sports, Politics"}';
+        '. what is this text about about and under what of the following categories does it fall: Politics, Sports, Culture, Economics, Entertainment, Science, Business, Technology, Legal. also, what country/ countries does this relate to (using ISO 3166-1 alpha-3 codes) or WORLD if no country. respond as {"country": "SDN, QAT", "category": "Sports, Politics"}';
       const completion = openai.chat.completions.create({
         model: 'gpt-4o-mini',
         store: true,
@@ -368,7 +372,7 @@ export class PostsService {
     });
   }
 
-  @Cron('*/7 * * * *')
+  @Cron('*/8 * * * *')
   async tweet() {
     // eslint-disable-next-line @typescript-eslint/no-var-requires
     const countries = require('i18n-iso-countries');
