@@ -311,64 +311,68 @@ export class PostsService {
         ', ' +
         post.text +
         '. what is this text about about and under what of the following categories does it fall: Politics, Sports, Culture, Economics, Entertainment, Science, Business, Technology, Legal. also, what country/ countries does this relate to (using ISO 3166-1 alpha-3 codes) or WORLD if no country. respond as {"country": "SDN, QAT", "category": "Sports, Politics"}';
-      const completion = openai.chat.completions.create({
-        model: 'gpt-4o-mini',
-        store: true,
-        messages: [{ role: 'user', content: query }],
-      });
+      try {
+        const completion = openai.chat.completions.create({
+          model: 'gpt-4o-mini',
+          store: true,
+          messages: [{ role: 'user', content: query }],
+        });
 
-      completion.then(async (result) => {
-        if (result.choices[0].message.refusal == null) {
-          const verdict = JSON.parse(result.choices[0].message.content);
+        completion.then(async (result) => {
+          if (result.choices[0].message.refusal == null) {
+            const verdict = JSON.parse(result.choices[0].message.content);
 
-          const categories = verdict.category.split(',');
-          const postCategories: postCategory[] = [];
+            const categories = verdict.category.split(',');
+            const postCategories: postCategory[] = [];
 
-          categories.forEach((cat: string) => {
-            switch (cat.toLowerCase()) {
-              case 'sports':
-                postCategories.push(postCategory.Sports);
-                break;
-              case 'politics':
-                postCategories.push(postCategory.Politics);
-                break;
-              case 'business':
-                postCategories.push(postCategory.Business);
-                break;
-              case 'culture':
-                postCategories.push(postCategory.Culture);
-                break;
-              case 'economics':
-                postCategories.push(postCategory.Economics);
-                break;
-              case 'entertainment':
-                postCategories.push(postCategory.Entertainment);
-                break;
-              case 'legal':
-                postCategories.push(postCategory.Legal);
-                break;
-              case 'science':
-                postCategories.push(postCategory.Science);
-                break;
-              case 'technology':
-                postCategories.push(postCategory.Technology);
-                break;
-              default:
-                postCategories.push(postCategory.General);
-                break;
-            }
-          });
+            categories.forEach((cat: string) => {
+              switch (cat.toLowerCase()) {
+                case 'sports':
+                  postCategories.push(postCategory.Sports);
+                  break;
+                case 'politics':
+                  postCategories.push(postCategory.Politics);
+                  break;
+                case 'business':
+                  postCategories.push(postCategory.Business);
+                  break;
+                case 'culture':
+                  postCategories.push(postCategory.Culture);
+                  break;
+                case 'economics':
+                  postCategories.push(postCategory.Economics);
+                  break;
+                case 'entertainment':
+                  postCategories.push(postCategory.Entertainment);
+                  break;
+                case 'legal':
+                  postCategories.push(postCategory.Legal);
+                  break;
+                case 'science':
+                  postCategories.push(postCategory.Science);
+                  break;
+                case 'technology':
+                  postCategories.push(postCategory.Technology);
+                  break;
+                default:
+                  postCategories.push(postCategory.General);
+                  break;
+              }
+            });
 
-          const country = verdict.country;
-          await this.prisma.post.update({
-            where: { id: post.id },
-            data: {
-              category: postCategories,
-              country: country,
-            },
-          });
-        }
-      });
+            const country = verdict.country;
+            await this.prisma.post.update({
+              where: { id: post.id },
+              data: {
+                category: postCategories,
+                country: country,
+              },
+            });
+          }
+        });
+      } catch (error) {
+        Logger.error(error);
+      }
     });
   }
 
@@ -476,19 +480,25 @@ export class PostsService {
       post.title +
       ', text:' +
       post.text;
-    const completion = openai.chat.completions.create({
-      model: 'gpt-4o-mini',
-      store: true,
-      messages: [{ role: 'user', content: query }],
-    });
 
-    await completion.then(async (result) => {
-      if (result.choices[0].message.refusal == null) {
-        verdict = result.choices[0].message.content;
-        await this.cacheManager.set('analysis-' + postId, verdict, 864000000);
-      }
-    });
-    await this.cacheManager.set('credit-' + ip, credit - 1, 300000);
-    return { data: verdict, ok: true, cached: false };
+    try {
+      const completion = openai.chat.completions.create({
+        model: 'gpt-4o-mini',
+        store: true,
+        messages: [{ role: 'user', content: query }],
+      });
+
+      await completion.then(async (result) => {
+        if (result.choices[0].message.refusal == null) {
+          verdict = result.choices[0].message.content;
+          await this.cacheManager.set('analysis-' + postId, verdict, 864000000);
+        }
+      });
+      await this.cacheManager.set('credit-' + ip, credit - 1, 300000);
+      return { data: verdict, ok: true, cached: false };
+    } catch (error) {
+      Logger.error(error);
+      return { data: null, ok: false, cached: false };
+    }
   }
 }
